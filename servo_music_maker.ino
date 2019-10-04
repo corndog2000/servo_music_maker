@@ -35,14 +35,27 @@ boolean bFirst;
 uint16_t pid, vid;
 
 //Array to hold all states of notes
-int notes[25];
+String note_que[119];
 
-Servo servos[] = {s22, s23, s24, s25, s26};  // create servo objects to control a servo
-int servo_pins[] = {22, 23, 24, 25, 26};
+String global_buf;
+extern String hex_codes[];
+extern String note_codes[];
+
+Servo s22;
+Servo s23;
+Servo s24;
+Servo s25;
+Servo s26;
 
 void setup()
 {
-  initialize_servos();
+  s22.attach(22); //C
+  s23.attach(23); //D
+  s24.attach(24); //E
+  s25.attach(25); //F
+  s26.attach(26); //G
+
+  //initialize_servos();
   //servo22.attach(22);  // attaches the servo on pin 9 to the servo object
 
   bFirst = true;
@@ -52,7 +65,13 @@ void setup()
   if (Usb.Init() == -1) {
     while (1); //halt
   }//if (Usb.Init() == -1...
-  delay( 200 );
+  delay(200);
+
+  initialize_servos();
+  delay(200);
+  initialize_servos();
+
+  Serial.println("Initialized");
 }
 
 void loop()
@@ -62,9 +81,9 @@ void loop()
   if ( Usb.getUsbTaskState() == USB_STATE_RUNNING )
   {
     MIDI_poll();
-
     //Check for key presses and actuate the coresponding servo motors.
 
+    //Serial.println(global_buf);
   }
   //delay(1ms)
   //doDelay(t1, (uint32_t)micros(), 1000);
@@ -73,13 +92,14 @@ void loop()
 // Poll USB MIDI Controler and send to serial MIDI
 void MIDI_poll()
 {
-  char buf[20];
+  int note;
+  char strength[5];
   uint8_t bufMidi[64];
   uint16_t  rcvd;
 
   if (Midi.vid != vid || Midi.pid != pid) {
-    sprintf(buf, "VID:%04X, PID:%04X", Midi.vid, Midi.pid);
-    Serial.println(buf);
+    //sprintf(buf, "VID:%04X, PID:%04X", Midi.vid, Midi.pid);
+    //Serial.println(buf);
     vid = Midi.vid;
     pid = Midi.pid;
   }
@@ -89,12 +109,39 @@ void MIDI_poll()
     //Serial.print(buf);
     //Serial.print(rcvd);
     //Serial.print(':');
-    for (int i = 2; i < 4; i++) {
-      sprintf(buf, " %02X", bufMidi[i]);
-      Serial.print(buf);
-    }
-    Serial.println("");
+    //Serial.print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
+    //Serial.println(bufMidi[2]);
+    //sprintf(note, "%02X", bufMidi[2]);
+    note = bufMidi[2];
+    Serial.print(note);
+    Serial.print(", ");
+
+    sprintf(strength, "%02X", bufMidi[3]);
+    Serial.println(strength);
+
+    //Note finder
+
+    if (String(strength) != "00")
+        {
+          servo_on(String(note_codes[note]));
+        }
+        else
+        {
+          servo_off(String(note_codes[note]));
+        }
+
   }
+  //After the if statement
+  /*
+    for (int i = 0; i < 119; i++)
+    {
+    if (note_que[i] != (""))
+    {
+      servo_tap(note_que[i]);
+      note_que[i] == ("");
+    }
+    }
+  */
 }
 
 // Delay time (max 16383 us)

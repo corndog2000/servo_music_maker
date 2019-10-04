@@ -1,4 +1,4 @@
-String hex_codes[] = {
+String hex_codes[119] = {
 "01",
 "02",
 "03",
@@ -120,7 +120,7 @@ String hex_codes[] = {
 "77"
 };
 
-String note_codes[] = {
+String note_codes[119] = {
 "C#-1",
 "D-1",
 "Eb-1",
