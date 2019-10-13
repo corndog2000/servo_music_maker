@@ -14,23 +14,23 @@ void servo_on(String input)
 {
   Serial.print("input ");
   Serial.println(input);
-  if (input.indexOf("C") != -1)
+  if (input.indexOf("C#") != -1)
+  {
+    s23.write(20);
+  }
+  else if (input.indexOf("C") != -1)
   {
     s22.write(20);
   }
   else if (input.indexOf("D") != -1)
   {
-    s23.write(20);
-  }
-  else if (input.indexOf("E") != -1)
-  {
     s24.write(20);
   }
-  else if (input.indexOf("F") != -1)
+  else if (input.indexOf("Eb") != -1)
   {
     s25.write(20);
   }
-  else if (input.indexOf("G") != -1)
+  else if (input.indexOf("E") != -1)
   {
     s26.write(20);
   }

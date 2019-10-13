@@ -112,7 +112,7 @@ void MIDI_poll()
     //Serial.print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
     //Serial.println(bufMidi[2]);
     //sprintf(note, "%02X", bufMidi[2]);
-    note = bufMidi[2];
+    note = bufMidi[2] - 1;
     Serial.print(note);
     Serial.print(", ");
 
