@@ -1,17 +1,33 @@
 //Current servo-note assignments
 //C, D, E, F, G
 
+
 void initialize_servos()
 {
-  s22.write(0);
-  s23.write(0);
-  s24.write(0);
-  s25.write(0);
-  s26.write(0);
+  for (int i = 0; i < NUM_SERVOS; i++)
+  {
+    if (pins[i] != -1)
+    {
+      servos[i].write(0);
+    }
+  }
 }
 
+//New method based on servo array
 void servo_on(String input)
 {
+  findServo(input)->write(20);
+}
+
+void servo_off(String input)
+{
+  findServo(input)->write(0);
+}
+
+//Old method of controlling servo motors
+/*
+  void servo_on(String input)
+  {
   Serial.print("input ");
   Serial.println(input);
   if (input.indexOf("C#") != -1)
@@ -34,10 +50,10 @@ void servo_on(String input)
   {
     s26.write(20);
   }
-}
+  }
 
-void servo_off(String input)
-{
+  void servo_off(String input)
+  {
   if (input.indexOf("C") != -1)
   {
     s22.write(0);
@@ -58,11 +74,11 @@ void servo_off(String input)
   {
     s26.write(0);
   }
-}
+  }
 
 
-void servo_tap(String input)
-{
+  void servo_tap(String input)
+  {
   Serial.print("input ");
   Serial.println(input);
   if (input.indexOf("C") != -1)
@@ -95,4 +111,5 @@ void servo_tap(String input)
     delay(100);
     s26.write(0);
   }
-}
+  }
+*/
