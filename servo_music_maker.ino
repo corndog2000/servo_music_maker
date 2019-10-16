@@ -36,7 +36,7 @@ bool playFromSD = true;
 // list will be opened (skips errors).
 const char *tuneList[] =
 {
-  "sun.mid",
+  "fur.mid",
 };
 
 SdFat  SD;
@@ -58,28 +58,82 @@ USB Usb;
 //USBHub Hub(&Usb);
 USBH_MIDI  Midi(&Usb);
 
+void findServo();
 void initialize_servos();
 void servo_tap(String input);
 void servo_on(String input);
 void servo_off(String input);
 
+void parseNotes(uint8_t bufMidi[]);
+
 boolean bFirst;
 uint16_t pid, vid;
 
 //Array to hold all states of notes
-String note_que[119];
+//String note_que[119];
 
-String global_buf;
+//String global_buf;
 extern String hex_codes[];
 extern String note_codes[];
 
 //Change this constant to match the number of servo motors you have hooked up.
-const int NUM_SERVOS = 5;
+const int NUM_SERVOS = 12;
 Servo servos[NUM_SERVOS];
-int pins[NUM_SERVOS] = {22, 23, 24, 25 , 26};
-String notes[NUM_SERVOS] = {"C#", "C", "D", "Eb", "E"};
+int pins[NUM_SERVOS] = {22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 34};  //, 35, 36 , 37
+String notes[NUM_SERVOS] = {"A", "Bb", "B", "C", "C#", "D", "Eb", "E", "F", "F#", "G", "G#"};
+int note_history[NUM_SERVOS];
 
 //END OF GLOBAL VARIABLES
+
+//Funciton that playes the notes
+void parseNotes(uint8_t bufMidi[])
+{
+  int note;
+  char strength[5];
+
+  note = bufMidi[2] - 1;
+  Serial.print(note);
+  Serial.print(", ");
+
+  sprintf(strength, "%02X", bufMidi[3]);
+  Serial.println(strength);
+
+  //Note finder
+
+  if (String(strength) != "00")
+  {
+    Serial.print("Note_codes: ");
+    Serial.println(String(note_codes[note]));
+    servo_on(String(note_codes[note]));
+  }
+  else
+  {
+    servo_off(String(note_codes[note]));
+  }
+}
+
+void parseNotesSD(int note, int strength)
+{
+  Serial.println();
+  
+  Serial.print(note);
+  Serial.print(", ");
+
+  Serial.println(strength);
+
+  //Note finder
+
+  if (strength != 0)
+  {
+    Serial.print("Note_codes: ");
+    Serial.println(String(note_codes[note]));
+    servo_on(String(note_codes[note]));
+  }
+  else
+  {
+    servo_off(String(note_codes[note]));
+  }
+}
 
 //From MIDIFile_Play
 void midiCallback(midi_event *pev)
@@ -101,6 +155,8 @@ void midiCallback(midi_event *pev)
     DEBUGX(pev->data[i]);
     DEBUG(' ');
   }
+
+  parseNotesSD(pev->data[sizeof(pev->data) - 3], pev->data[sizeof(pev->data) - 2]);
 }
 
 void sysexCallback(sysex_event *pev)
@@ -167,17 +223,6 @@ void tickMetronome(void)
 
 //End from MIDIFile_Play
 
-Servo * findServo(String input)
-{
-  for (int i = 0; i < NUM_SERVOS; ++i)
-  {
-    if (input.indexOf(notes[i] != -1))
-    {
-      return &servos[i];
-    }
-  }
-}
-
 // Poll USB MIDI Controler and send to serial MIDI
 void MIDI_poll()
 {
@@ -201,23 +246,30 @@ void MIDI_poll()
     //Serial.print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
     //Serial.println(bufMidi[2]);
     //sprintf(note, "%02X", bufMidi[2]);
-    note = bufMidi[2] - 1;
-    Serial.print(note);
-    Serial.print(", ");
 
-    sprintf(strength, "%02X", bufMidi[3]);
-    Serial.println(strength);
+    parseNotes(bufMidi);
 
-    //Note finder
+    /*
+      note = bufMidi[2] - 1;
+      Serial.print(note);
+      Serial.print(", ");
 
-    if (String(strength) != "00")
-    {
+      sprintf(strength, "%02X", bufMidi[3]);
+      Serial.println(strength);
+
+      //Note finder
+
+      if (String(strength) != "00")
+      {
+      Serial.print("Note_codes: ");
+      Serial.println(String(note_codes[note]));
       servo_on(String(note_codes[note]));
-    }
-    else
-    {
+      }
+      else
+      {
       servo_off(String(note_codes[note]));
-    }
+      }
+    */
 
   }
   //After the if statement

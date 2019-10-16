@@ -1,6 +1,22 @@
 //Current servo-note assignments
 //C, D, E, F, G
 
+Servo * findServo(String input)
+{
+  for (int i = 0; i < NUM_SERVOS; ++i)
+  {
+
+    if (input.substring(0, input.length() - 1).equals(notes[i]))
+    {
+      Serial.print("DEBUG ");
+      Serial.println(input.substring(0, input.length() - 1));
+
+      Serial.print("found servo: ");
+      Serial.println(i);
+      return &servos[i];
+    }
+  }
+}
 
 void initialize_servos()
 {
@@ -16,6 +32,9 @@ void initialize_servos()
 //New method based on servo array
 void servo_on(String input)
 {
+  Serial.print("input ");
+  Serial.println(input);
+
   findServo(input)->write(20);
 }
 
@@ -23,6 +42,7 @@ void servo_off(String input)
 {
   findServo(input)->write(0);
 }
+
 
 //Old method of controlling servo motors
 /*
