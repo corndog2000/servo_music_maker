@@ -5,7 +5,7 @@
 
 //If true the arduino will attempt to load the midi file from the SD card.
 //If false the arduino will expect input from a midi keyboard plugged into the usb host shield.
-bool playFromSD = true;
+bool playFromSD = false;
 
 //From MIDIFile_Play
 #include <SdFat.h>
@@ -21,13 +21,7 @@ bool playFromSD = true;
 // Other hardware will be different as documented for that hardware.
 #define  SD_SELECT  4
 
-// LED definitions for user indicators
-#define READY_LED     7 // when finished
-#define SMF_ERROR_LED 6 // SMF error
-#define SD_ERROR_LED  5 // SD error
-#define BEAT_LED      6 // toggles to the 'beat'
-
-#define WAIT_DELAY    5000 // ms
+#define WAIT_DELAY    1000 // ms
 
 #define ARRAY_SIZE(a) (sizeof(a)/sizeof(a[0]))
 
@@ -36,7 +30,7 @@ bool playFromSD = true;
 // list will be opened (skips errors).
 const char *tuneList[] =
 {
-  "fur.mid",
+  "scale.mid",
 };
 
 SdFat  SD;
@@ -115,7 +109,7 @@ void parseNotes(uint8_t bufMidi[])
 void parseNotesSD(int note, int strength)
 {
   Serial.println();
-  
+
   Serial.print(note);
   Serial.print(", ");
 
@@ -207,7 +201,6 @@ void tickMetronome(void)
     if ((millis() - lastBeatTime) >= beatTime)
     {
       lastBeatTime = millis();
-      digitalWrite(BEAT_LED, HIGH);
       inBeat = true;
     }
   }
@@ -215,7 +208,6 @@ void tickMetronome(void)
   {
     if ((millis() - lastBeatTime) >= 100) // keep the flash on for 100ms only
     {
-      digitalWrite(BEAT_LED, LOW);
       inBeat = false;
     }
   }
@@ -304,10 +296,7 @@ void doDelay(uint32_t t1, uint32_t t2, uint32_t delayTime)
 //SETUP
 void setup()
 {
-  // Set up LED pins
-  pinMode(READY_LED, OUTPUT);
-  pinMode(SD_ERROR_LED, OUTPUT);
-  pinMode(SMF_ERROR_LED, OUTPUT);
+  Serial.begin(115200);
 
   DEBUG("\n[MidiFile Play List]");
 
@@ -315,16 +304,12 @@ void setup()
   if (!SD.begin(SD_SELECT, SPI_FULL_SPEED))
   {
     DEBUG("\nSD init fail!");
-    digitalWrite(SD_ERROR_LED, HIGH);
     while (true) ;
   }
 
   // Initialize MIDIFile
   SMF.begin(&SD);
   SMF.setMidiHandler(midiCallback);
-  SMF.setSysexHandler(sysexCallback);
-
-  digitalWrite(READY_LED, HIGH);
 
   //Attach each servo object to its coresponding GPIO pin
   for (int i = 0; i < NUM_SERVOS; i++)
@@ -337,7 +322,6 @@ void setup()
 
   bFirst = true;
   vid = pid = 0;
-  Serial.begin(115200);
 
   if (Usb.Init() == -1) {
     while (1); //halt
@@ -377,8 +361,6 @@ void loop()
           DEBUGS("\nS_IDLE");
 
           // reset LEDs
-          digitalWrite(READY_LED, LOW);
-          digitalWrite(SD_ERROR_LED, LOW);
 
           currTune++;
           if (currTune >= ARRAY_SIZE(tuneList))
@@ -393,7 +375,6 @@ void loop()
           {
             DEBUG(" - SMF load Error ");
             DEBUG(err);
-            digitalWrite(SMF_ERROR_LED, HIGH);
             timeStart = millis();
             state = S_WAIT_BETWEEN;
             DEBUGS("\nWAIT_BETWEEN");
@@ -427,7 +408,6 @@ void loop()
         break;
 
       case S_WAIT_BETWEEN:    // signal finish LED with a dignified pause
-        digitalWrite(READY_LED, HIGH);
         if (millis() - timeStart >= WAIT_DELAY)
           state = S_IDLE;
         break;
