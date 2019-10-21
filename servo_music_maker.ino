@@ -5,7 +5,39 @@
 
 //If true the arduino will attempt to load the midi file from the SD card.
 //If false the arduino will expect input from a midi keyboard plugged into the usb host shield.
-bool playFromSD = false;
+bool playFromSD = true;
+bool verboseMode = true;
+bool waiting = true;
+
+//From Serial_Touchscreen_Tester
+#include <Adafruit_GFX.h>
+#include <Wire.h>
+#include <Adafruit_ILI9341.h>
+#include <Adafruit_FT6206.h>
+
+// The FT6206 uses hardware I2C (SCL/SDA)
+Adafruit_FT6206 ts = Adafruit_FT6206();
+
+#define TFT_CS 10
+#define TFT_DC 9
+Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC);
+
+Adafruit_GFX_Button SelectSD = Adafruit_GFX_Button();
+Adafruit_GFX_Button SelectMidi = Adafruit_GFX_Button();
+//Adafruit_GFX_Button Number2 = Adafruit_GFX_Button();
+//Adafruit_GFX_Button Number3 = Adafruit_GFX_Button();
+//Adafruit_GFX_Button Number4 = Adafruit_GFX_Button();
+//Adafruit_GFX_Button Number5 = Adafruit_GFX_Button();
+//Adafruit_GFX_Button Number6 = Adafruit_GFX_Button();
+//Adafruit_GFX_Button Number7 = Adafruit_GFX_Button();
+//Adafruit_GFX_Button Number8 = Adafruit_GFX_Button();
+//Adafruit_GFX_Button Number9 = Adafruit_GFX_Button();
+//Adafruit_GFX_Button NumberDelete = Adafruit_GFX_Button();
+
+void drawSelectionButtons(bool sdFail);
+void drawSelectInputLabel();
+void drawHomeScreen(bool sdFail);
+void drawPlayingSdCard();
 
 //From MIDIFile_Play
 #include <SdFat.h>
@@ -30,7 +62,7 @@ bool playFromSD = false;
 // list will be opened (skips errors).
 const char *tuneList[] =
 {
-  "scale.mid",
+  "fur.mid",
 };
 
 SdFat  SD;
@@ -78,6 +110,8 @@ String notes[NUM_SERVOS] = {"A", "Bb", "B", "C", "C#", "D", "Eb", "E", "F", "F#"
 int note_history[NUM_SERVOS];
 
 //END OF GLOBAL VARIABLES
+
+void(* resetFunc) (void) = 0; //declare reset function @ address 0
 
 //Funciton that playes the notes
 void parseNotes(uint8_t bufMidi[])
@@ -130,7 +164,7 @@ void parseNotesSD(int note, int strength)
 }
 
 //From MIDIFile_Play
-void midiCallback(midi_event *pev)
+void midiCallback(midi_event * pev)
 // Called by the MIDIFile library when a file event needs to be processed
 // thru the midi communications interface.
 // This callback is set up in the setup() function.
@@ -153,7 +187,7 @@ void midiCallback(midi_event *pev)
   parseNotesSD(pev->data[sizeof(pev->data) - 3], pev->data[sizeof(pev->data) - 2]);
 }
 
-void sysexCallback(sysex_event *pev)
+void sysexCallback(sysex_event * pev)
 // Called by the MIDIFile library when a system Exclusive (sysex) file event needs
 // to be processed through the midi communications interface. Most sysex events cannot
 // really be processed, so we just ignore it here.
@@ -223,13 +257,15 @@ void MIDI_poll()
   uint8_t bufMidi[64];
   uint16_t  rcvd;
 
-  if (Midi.vid != vid || Midi.pid != pid) {
+  if (Midi.vid != vid || Midi.pid != pid)
+  {
     //sprintf(buf, "VID:%04X, PID:%04X", Midi.vid, Midi.pid);
     //Serial.println(buf);
     vid = Midi.vid;
     pid = Midi.pid;
   }
-  if (Midi.RecvData( &rcvd,  bufMidi) == 0 ) {
+  if (Midi.RecvData( &rcvd,  bufMidi) == 0 )
+  {
     uint32_t time = (uint32_t)millis();
     //sprintf(buf, "%04X%04X: ", (uint16_t)(time >> 16), (uint16_t)(time & 0xFFFF)); // Split variable to prevent warnings on the ESP8266 platform
     //Serial.print(buf);
@@ -282,13 +318,17 @@ void doDelay(uint32_t t1, uint32_t t2, uint32_t delayTime)
 {
   uint32_t t3;
 
-  if ( t1 > t2 ) {
+  if ( t1 > t2 )
+  {
     t3 = (0xFFFFFFFF - t1 + t2);
-  } else {
+  }
+  else
+  {
     t3 = t2 - t1;
   }
 
-  if ( t3 < delayTime ) {
+  if ( t3 < delayTime )
+  {
     delayMicroseconds(delayTime - t3);
   }
 }
@@ -298,13 +338,49 @@ void setup()
 {
   Serial.begin(115200);
 
+  tft.begin();
+  if (!ts.begin(40))
+  {
+    Serial.println("Unable to start touchscreen.");
+  }
+  else
+  {
+    Serial.println("Touchscreen started.");
+  }
+
+  /*void initButtonUL(Adafruit_GFX *gfx, int16_t x1, int16_t y1,
+    uint16_t w, uint16_t h, uint16_t outline, uint16_t fill,
+    uint16_t textcolor, char *label, uint8_t textsize);*/
+  SelectSD.initButtonUL(&tft, 80, 60, 150, 60, ILI9341_CYAN, ILI9341_DARKCYAN, ILI9341_WHITE, "SD Card", 3);
+  SelectMidi.initButtonUL(&tft, 65, 150, 180, 60, ILI9341_RED, ILI9341_MAROON, ILI9341_WHITE, "Keyboard", 3);
+  //Number2.initButtonUL(&tft, 100, 140, 40, 40, ILI9341_DARKGREY, ILI9341_DARKGREY, ILI9341_WHITE, "2", 3);
+  //Number3.initButtonUL(&tft, 150, 140, 40, 40, ILI9341_DARKGREY, ILI9341_DARKGREY, ILI9341_WHITE, "3", 3);
+  //Number4.initButtonUL(&tft, 200, 140, 40, 40, ILI9341_DARKGREY, ILI9341_DARKGREY, ILI9341_WHITE, "4", 3);
+  //Number5.initButtonUL(&tft, 250, 140, 40, 40, ILI9341_DARKGREY, ILI9341_DARKGREY, ILI9341_WHITE, "5", 3);
+  //Number6.initButtonUL(&tft, 0, 190, 40, 40, ILI9341_DARKGREY, ILI9341_DARKGREY, ILI9341_WHITE, "6", 3);
+  //Number7.initButtonUL(&tft, 50, 190, 40, 40, ILI9341_DARKGREY, ILI9341_DARKGREY, ILI9341_WHITE, "7", 3);
+  //Number8.initButtonUL(&tft, 100, 190, 40, 40, ILI9341_DARKGREY, ILI9341_DARKGREY, ILI9341_WHITE, "8", 3);
+  //Number9.initButtonUL(&tft, 150, 190, 40, 40, ILI9341_DARKGREY, ILI9341_DARKGREY, ILI9341_WHITE, "9", 3);
+  //NumberDelete.initButtonUL(&tft, 240, 200, 80, 40, ILI9341_MAROON, ILI9341_MAROON, ILI9341_WHITE, "Delete", 2);
+
+  tft.setRotation(1);
+
   DEBUG("\n[MidiFile Play List]");
 
   // Initialize SD
   if (!SD.begin(SD_SELECT, SPI_FULL_SPEED))
   {
-    DEBUG("\nSD init fail!");
-    while (true) ;
+    Serial.println("SD init fail!");
+    drawHomeScreen(true);
+
+    //delay(1000);
+
+    //resetFunc(); //call reset
+  }
+  else
+  {
+    Serial.println("SD init success!");
+    drawHomeScreen(false);
   }
 
   // Initialize MIDIFile
@@ -338,6 +414,59 @@ void setup()
 //MAIN LOOP
 void loop()
 {
+  while (waiting)
+  {
+    //Serial.println("############# Waiting #############");
+
+    if (ts.touched())
+    {
+      // Retrieve a point
+      TS_Point p = ts.getPoint();
+      TS_Point p2 = p;
+      // rotate coordinate system
+      // flip it around to match the screen.
+      //p.y = map(p.y, 0, 320, 320, 0);
+      p.x = p2.y;
+      p.y = p2.x;
+      p.x = map(p.x, 0, 320, 320, 0);
+      if (verboseMode) {
+        Serial.print("X: ");
+        Serial.print(p.x);
+        Serial.print(", ");
+        Serial.print("Y: ");
+        Serial.print(p.y);
+        Serial.println();
+      }
+      if (SelectSD.contains(p.x, p.y)) {
+        SelectSD.press(true);
+      }
+      else if (SelectMidi.contains(p.x, p.y)) {
+        SelectMidi.press(true);
+      }
+    }
+    else
+    {
+      SelectSD.press(false);
+      SelectMidi.press(false);
+    }
+
+
+    if (SelectSD.justReleased())
+    {
+      //drawPlayingSdCard();
+      playFromSD = true;
+      waiting = false;
+      Serial.println("*************** Selected Sd card ***************");
+    }
+    else if (SelectMidi.justReleased())
+    {
+      playFromSD = false;
+      waiting = false;
+      Serial.println("*************** Selected Midi Keyboard card ***************");
+    }
+
+  }
+
   if (!playFromSD)  //Expect midi keyboard inputs
   {
     Usb.Task();
@@ -405,6 +534,9 @@ void loop()
         timeStart = millis();
         state = S_WAIT_BETWEEN;
         DEBUGS("\nWAIT_BETWEEN");
+
+        waiting = true;
+
         break;
 
       case S_WAIT_BETWEEN:    // signal finish LED with a dignified pause
