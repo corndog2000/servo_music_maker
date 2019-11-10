@@ -348,11 +348,13 @@ void setup()
     Serial.println("Touchscreen started.");
   }
 
+  tft.setRotation(3);
+
   /*void initButtonUL(Adafruit_GFX *gfx, int16_t x1, int16_t y1,
     uint16_t w, uint16_t h, uint16_t outline, uint16_t fill,
     uint16_t textcolor, char *label, uint8_t textsize);*/
   SelectSD.initButtonUL(&tft, 80, 60, 150, 60, ILI9341_CYAN, ILI9341_DARKCYAN, ILI9341_WHITE, "SD Card", 3);
-  SelectMidi.initButtonUL(&tft, 65, 150, 180, 60, ILI9341_RED, ILI9341_MAROON, ILI9341_WHITE, "Keyboard", 3);
+  SelectMidi.initButtonUL(&tft, 65, 180, 180, 60, ILI9341_RED, ILI9341_MAROON, ILI9341_WHITE, "Keyboard", 3);
   //Number2.initButtonUL(&tft, 100, 140, 40, 40, ILI9341_DARKGREY, ILI9341_DARKGREY, ILI9341_WHITE, "2", 3);
   //Number3.initButtonUL(&tft, 150, 140, 40, 40, ILI9341_DARKGREY, ILI9341_DARKGREY, ILI9341_WHITE, "3", 3);
   //Number4.initButtonUL(&tft, 200, 140, 40, 40, ILI9341_DARKGREY, ILI9341_DARKGREY, ILI9341_WHITE, "4", 3);
@@ -363,7 +365,7 @@ void setup()
   //Number9.initButtonUL(&tft, 150, 190, 40, 40, ILI9341_DARKGREY, ILI9341_DARKGREY, ILI9341_WHITE, "9", 3);
   //NumberDelete.initButtonUL(&tft, 240, 200, 80, 40, ILI9341_MAROON, ILI9341_MAROON, ILI9341_WHITE, "Delete", 2);
 
-  tft.setRotation(1);
+
 
   DEBUG("\n[MidiFile Play List]");
 
@@ -422,26 +424,27 @@ void loop()
     {
       // Retrieve a point
       TS_Point p = ts.getPoint();
-      TS_Point p2 = p;
-      // rotate coordinate system
-      // flip it around to match the screen.
+
+      // Print out raw data from screen touch controller
+      Serial.print("X = "); Serial.print(p.x);
+      Serial.print("\tY = "); Serial.print(p.y);
+      Serial.print(" -> ");
+
+      p.x = map(p.x, 240, 0, 0, 240);
       //p.y = map(p.y, 0, 320, 320, 0);
-      p.x = p2.y;
-      p.y = p2.x;
-      p.x = map(p.x, 0, 320, 320, 0);
       if (verboseMode) {
-        Serial.print("X: ");
-        Serial.print(p.x);
-        Serial.print(", ");
-        Serial.print("Y: ");
-        Serial.print(p.y);
-        Serial.println();
+        // Print out the remapped (rotated) coordinates
+        Serial.print("("); Serial.print(p.x);
+        Serial.print(", "); Serial.print(p.y);
+        Serial.println(")");
       }
-      if (SelectSD.contains(p.x, p.y)) {
+      if (SelectSD.contains(p.y, p.x)) {
         SelectSD.press(true);
+        Serial.println("SelectSD is being pressed!");
       }
-      else if (SelectMidi.contains(p.x, p.y)) {
+      else if (SelectMidi.contains(p.y, p.x)) {
         SelectMidi.press(true);
+        Serial.println("SelectMidi is being pressed!");
       }
     }
     else
