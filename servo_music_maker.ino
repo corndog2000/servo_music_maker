@@ -24,6 +24,7 @@ Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC);
 
 Adafruit_GFX_Button SelectSD = Adafruit_GFX_Button();
 Adafruit_GFX_Button SelectMidi = Adafruit_GFX_Button();
+Adafruit_GFX_Button NextFile = Adafruit_GFX_Button();
 //Adafruit_GFX_Button Number2 = Adafruit_GFX_Button();
 //Adafruit_GFX_Button Number3 = Adafruit_GFX_Button();
 //Adafruit_GFX_Button Number4 = Adafruit_GFX_Button();
@@ -38,6 +39,7 @@ void drawSelectionButtons(bool sdFail);
 void drawSelectInputLabel();
 void drawHomeScreen(bool sdFail);
 void drawPlayingSdCard();
+void drawFilename(String labelText);
 
 //From MIDIFile_Play
 #include <SdFat.h>
@@ -57,13 +59,9 @@ void drawPlayingSdCard();
 
 #define ARRAY_SIZE(a) (sizeof(a)/sizeof(a[0]))
 
-// The files in the tune list should be located on the SD card
-// or an error will occur opening the file and the next in the
-// list will be opened (skips errors).
-const char *tuneList[] =
-{
-  "fur.mid",
-};
+const char MAX_SONGS = 30;
+char tuneList[MAX_SONGS][30] = {};
+int song_count = 0;
 
 SdFat  SD;
 MD_MIDIFile SMF;
@@ -110,6 +108,35 @@ String notes[NUM_SERVOS] = {"A", "Bb", "B", "C", "C#", "D", "Eb", "E", "F", "F#"
 int note_history[NUM_SERVOS];
 
 //END OF GLOBAL VARIABLES
+
+int getSongNamesFromCard()
+{
+  SdFile file;    // iterated file
+
+  SD.vwd()->rewind();
+
+  int pos = 0;
+  while (file.openNext(SD.vwd(), O_READ))
+  {
+    if (file.isFile())
+    {
+      //char buf[30];
+      char* buf = tuneList[pos];
+
+      file.getName(buf, ARRAY_SIZE(tuneList[pos]));
+      Serial.print(F("\n"));
+      Serial.print(buf);
+      Serial.print(F("\t"));
+      Serial.print(pos);
+
+      //tuneList[pos] = buf;
+      pos = pos + 1;
+    }
+    file.close();
+  }
+  Serial.print(F("\n"));
+  return pos;
+}
 
 void(* resetFunc) (void) = 0; //declare reset function @ address 0
 
@@ -355,16 +382,7 @@ void setup()
     uint16_t textcolor, char *label, uint8_t textsize);*/
   SelectSD.initButtonUL(&tft, 80, 60, 150, 60, ILI9341_CYAN, ILI9341_DARKCYAN, ILI9341_WHITE, "SD Card", 3);
   SelectMidi.initButtonUL(&tft, 65, 180, 180, 60, ILI9341_RED, ILI9341_MAROON, ILI9341_WHITE, "Keyboard", 3);
-  //Number2.initButtonUL(&tft, 100, 140, 40, 40, ILI9341_DARKGREY, ILI9341_DARKGREY, ILI9341_WHITE, "2", 3);
-  //Number3.initButtonUL(&tft, 150, 140, 40, 40, ILI9341_DARKGREY, ILI9341_DARKGREY, ILI9341_WHITE, "3", 3);
-  //Number4.initButtonUL(&tft, 200, 140, 40, 40, ILI9341_DARKGREY, ILI9341_DARKGREY, ILI9341_WHITE, "4", 3);
-  //Number5.initButtonUL(&tft, 250, 140, 40, 40, ILI9341_DARKGREY, ILI9341_DARKGREY, ILI9341_WHITE, "5", 3);
-  //Number6.initButtonUL(&tft, 0, 190, 40, 40, ILI9341_DARKGREY, ILI9341_DARKGREY, ILI9341_WHITE, "6", 3);
-  //Number7.initButtonUL(&tft, 50, 190, 40, 40, ILI9341_DARKGREY, ILI9341_DARKGREY, ILI9341_WHITE, "7", 3);
-  //Number8.initButtonUL(&tft, 100, 190, 40, 40, ILI9341_DARKGREY, ILI9341_DARKGREY, ILI9341_WHITE, "8", 3);
-  //Number9.initButtonUL(&tft, 150, 190, 40, 40, ILI9341_DARKGREY, ILI9341_DARKGREY, ILI9341_WHITE, "9", 3);
-  //NumberDelete.initButtonUL(&tft, 240, 200, 80, 40, ILI9341_MAROON, ILI9341_MAROON, ILI9341_WHITE, "Delete", 2);
-
+  NextFile.initButtonUL(&tft, 260, 67, 40, 40, ILI9341_LIGHTGREY, ILI9341_DARKGREY, ILI9341_WHITE, ">", 3);
 
 
   DEBUG("\n[MidiFile Play List]");
@@ -401,14 +419,23 @@ void setup()
   bFirst = true;
   vid = pid = 0;
 
-  if (Usb.Init() == -1) {
-    while (1); //halt
-  }//if (Usb.Init() == -1...
   delay(200);
+  initialize_servos();
+  delay(200);
+  initialize_servos();
 
-  initialize_servos();
-  delay(200);
-  initialize_servos();
+  song_count = getSongNamesFromCard();
+
+  /*
+     Print the song names read from sd card
+    Serial.println("@#@#@#@#@#@#@#@#@#@#@#@#@#@#@#@#@#@#@#@#@#@#@#@#@#@#@#@#@#@#@#@#@#@#@#");
+    for (int i = 0; i < MAX_SONGS; i++)
+    {
+    Serial.print(tuneList[i]);
+    Serial.print("\t");
+    Serial.println(i);
+    }
+  */
 
   Serial.println("Initialized");
 }
@@ -419,6 +446,7 @@ void loop()
   while (waiting)
   {
     //Serial.println("############# Waiting #############");
+
 
     if (ts.touched())
     {
@@ -446,15 +474,24 @@ void loop()
         SelectMidi.press(true);
         Serial.println("SelectMidi is being pressed!");
       }
+      else if (NextFile.contains(p.y, p.x)) {
+        NextFile.press(true);
+        Serial.println("NextFile is being pressed!");
+      }
     }
     else
     {
       SelectSD.press(false);
       SelectMidi.press(false);
+      NextFile.press(false);
     }
 
 
-    if (SelectSD.justReleased())
+    if (NextFile.justReleased())
+    {
+
+    }
+    else if (SelectSD.justReleased())
     {
       //drawPlayingSdCard();
       playFromSD = true;
@@ -491,8 +528,6 @@ void loop()
           int err;
 
           DEBUGS("\nS_IDLE");
-
-          // reset LEDs
 
           currTune++;
           if (currTune >= ARRAY_SIZE(tuneList))
